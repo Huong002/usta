@@ -327,3 +327,30 @@ msgstr "Область"
 
 msgid "You can access the USTA menu here."
 msgstr "Меню USTA доступне тут."
+
+msgid "Translation Mode:"
+msgstr "Режим перекладу:"
+
+msgid "Continuous"
+msgstr "Безперервний"
+
+msgid "On-demand"
+msgstr "За запитом"
+
+msgid "Continuous monitors the selected region. On-demand translates a region after a shortcut."
+msgstr "Безперервний режим стежить за вибраною областю. Режим за запитом перекладає область після натискання скорочення."
+
+msgid "Translate selected area:"
+msgstr "Перекласти вибрану область:"
+
+msgid "In On-demand mode, use this shortcut to select a screen area and translate it once."
+msgstr "У режимі за запитом натисніть це скорочення, щоб вибрати область екрана й перекласти її один раз."
+
+msgid "Translating..."
+msgstr "Переклад..."
+
+msgid "Request already in progress"
+msgstr "Запит уже виконується"
+
+msgid "Each action must use a different shortcut."
+msgstr "Для кожної дії потрібно використовувати окреме скорочення."

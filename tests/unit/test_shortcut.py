@@ -1,4 +1,5 @@
 import contextlib
+import asyncio
 import os
 import sys
 import threading
@@ -9,6 +10,106 @@ from usta.core.shortcut import GlobalHotkey, keyboard
 
 
 class PlatformHotkeyTests(unittest.TestCase):
+    def test_wayland_hotkey_uses_portal_backend(self):
+        backend = mock.Mock()
+        with (
+            mock.patch("usta.core.shortcut.sys.platform", "linux"),
+            mock.patch.dict(os.environ, {"XDG_SESSION_TYPE": "wayland"}),
+            mock.patch(
+                "usta.core.shortcut._load_wayland_hotkey", return_value=mock.Mock(return_value=backend)
+            ) as load_portal,
+        ):
+            hotkey = GlobalHotkey("<shift>+<alt>+t", lambda: None)
+            self.assertTrue(hotkey.start())
+            portal_type = load_portal.return_value
+            portal_type.assert_called_once_with("<shift>+<alt>+t", hotkey.callback)
+            backend.start.assert_called_once()
+            hotkey.stop()
+            backend.stop.assert_called_once()
+
+    def test_portal_trigger_uses_xdg_shortcut_syntax(self):
+        from usta.core.platform.linux.global_shortcuts import to_portal_trigger
+
+        self.assertEqual(to_portal_trigger("<shift>+<alt>+t"), "SHIFT+ALT+t")
+        self.assertEqual(to_portal_trigger("<ctrl>+<alt>+f9"), "CTRL+ALT+F9")
+
+    def test_wayland_bind_shortcuts_request_marshals_struct_as_list(self):
+        from dbus_next import Variant
+        from dbus_next.message import Message
+        from usta.core.platform.linux.global_shortcuts import WaylandGlobalHotkey
+
+        async def scenario():
+            hotkey = WaylandGlobalHotkey("<alt>+c", lambda: None)
+            hotkey._bus = mock.Mock()
+            hotkey._bus.connect = mock.AsyncMock(return_value=hotkey._bus)
+            hotkey._stopping = asyncio.Event()
+            hotkey._stopping.set()
+            hotkey._register_app_id = mock.AsyncMock()
+            hotkey._add_match = mock.AsyncMock()
+            hotkey._portal_request = mock.AsyncMock(
+                side_effect=[
+                    {"session_handle": Variant("o", "/portal/session/usta")},
+                    {"shortcuts": [(hotkey._token, {})]},
+                ]
+            )
+            with mock.patch(
+                "usta.core.platform.linux.global_shortcuts.MessageBus",
+                return_value=hotkey._bus,
+            ):
+                await hotkey._connect_and_bind()
+
+            _, signature, body, _ = hotkey._portal_request.await_args_list[1].args
+            self.assertIsInstance(body[1][0], list)
+            Message(
+                path="/org/freedesktop/portal/desktop",
+                member="BindShortcuts",
+                signature=signature,
+                body=body,
+            )
+
+        asyncio.run(scenario())
+
+    def test_portal_activation_calls_the_matching_hotkey(self):
+        from dbus_next.message import Message, MessageType
+        from usta.core.platform.linux.global_shortcuts import (
+            SHORTCUTS_INTERFACE,
+            WaylandGlobalHotkey,
+        )
+
+        callback = mock.Mock()
+        hotkey = WaylandGlobalHotkey("<shift>+<alt>+t", callback)
+        hotkey._session_handle = "/org/freedesktop/portal/desktop/session/usta"
+        hotkey._token = "shortcut_id"
+        message = Message(
+            message_type=MessageType.SIGNAL,
+            path="/org/freedesktop/portal/desktop",
+            interface=SHORTCUTS_INTERFACE,
+            member="Activated",
+            body=[hotkey._session_handle, hotkey._token, 1, {}],
+        )
+
+        self.assertTrue(hotkey._on_message(message))
+        callback.assert_called_once_with()
+
+    def test_retries_keyboard_backend_and_logs_the_import_failure(self):
+        backend = mock.Mock()
+        backend.HotKey.parse.return_value = {"ctrl", "x"}
+        hotkey = GlobalHotkey("<ctrl>+x", lambda: None)
+        with (
+            mock.patch("usta.core.shortcut.keyboard", None),
+            mock.patch.dict(os.environ, {"XDG_SESSION_TYPE": "x11"}),
+            mock.patch(
+                "usta.core.shortcut._load_keyboard",
+                side_effect=[ImportError("failed to acquire X connection"), backend],
+                create=True,
+            ) as load_keyboard,
+        ):
+            with self.assertLogs("usta.core.shortcut", level="WARNING") as logs:
+                self.assertFalse(hotkey.start())
+            self.assertIn("failed to acquire X connection", logs.output[0])
+            self.assertTrue(hotkey.start())
+        self.assertEqual(load_keyboard.call_count, 2)
+
     def test_linux_and_windows_keep_the_existing_pynput_listener(self):
         for platform in ("linux", "win32"):
             with self.subTest(platform=platform):
@@ -16,6 +117,7 @@ class PlatformHotkeyTests(unittest.TestCase):
                 backend.HotKey.parse.return_value = {"ctrl", "x"}
                 with (
                     mock.patch("usta.core.shortcut.sys.platform", platform),
+                    mock.patch.dict(os.environ, {"XDG_SESSION_TYPE": "x11"}),
                     mock.patch("usta.core.shortcut.keyboard", backend),
                     mock.patch.dict(
                         sys.modules,

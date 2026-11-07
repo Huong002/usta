@@ -16,3 +16,13 @@ The GUI submits immutable settings to the worker. Its capture loop owns screensh
 ## Persistence
 
 Settings/presets use schema-versioned JSON under the existing platform config directory. Writes use a private temporary file and atomic replacement. Legacy local pickle files are read using a globals-rejecting unpickler and remain untouched after migration. Unsupported/corrupt JSON is preserved rather than silently overwritten. Downgrading does not backport later JSON edits to the old pickle files.
+
+## Capture modes
+
+`AppSettings.capture_mode` selects the existing continuous capture loop or an
+on-demand loop that waits for an immutable `CaptureRequest`. The global shortcut
+and region selector remain in the UI layer; a confirmed rectangle and DPI scale
+cross the controller/worker boundary. The pipeline performs one capture and OCR
+for that request, then uses the existing single-thread translation executor and
+session invalidation. Missing mode settings default to continuous. Temporary
+region selection remains a separate ten-second override for continuous mode.

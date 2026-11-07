@@ -11,6 +11,7 @@ class OCRTab(QWidget):
     changed = Signal()
     dpi_changed = Signal(float)
     toggle_dpi_requested = Signal(object)
+    capture_mode_changed = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -32,6 +33,19 @@ class OCRTab(QWidget):
         self.combo_screenshot.currentTextChanged.connect(self.screen_engine_changed.emit)
         self.combo_screenshot.currentTextChanged.connect(self.changed)
         tab_ocr_layout.addWidget(self.combo_screenshot)
+
+        tab_ocr_layout.addWidget(QLabel(_("Translation Mode:")))
+        self.combo_capture_mode = QComboBox()
+        self.combo_capture_mode.setFocusPolicy(Qt.NoFocus)
+        self.combo_capture_mode.addItem(_("Continuous"), "continuous")
+        self.combo_capture_mode.addItem(_("On-demand"), "on_demand")
+        self.combo_capture_mode.currentIndexChanged.connect(
+            lambda _index: self.capture_mode_changed.emit(self.combo_capture_mode.currentData())
+        )
+        self.combo_capture_mode.setToolTip(
+            _("Continuous monitors the selected region. On-demand translates a region after a shortcut.")
+        )
+        tab_ocr_layout.addWidget(self.combo_capture_mode)
 
         h_dpi = QHBoxLayout()
         h_dpi.addWidget(QLabel(_("DPI Scale:")))

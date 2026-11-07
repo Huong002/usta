@@ -2,6 +2,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from usta.application.settings import DEFAULT_TRANSLATION_HOTKEY
 from usta.config import SETTINGS_TOPMOST_HOTKEY, TEMPORARY_REGION_HOTKEY
 from usta.i18n import _
 
@@ -148,13 +149,16 @@ def _add_hotkey_row(layout, label_text, button, reset_callback, tooltip):
 class HotkeyTab(QWidget):
     settings_hotkey_changed = Signal(str)
     region_hotkey_changed = Signal(str)
+    translation_hotkey_changed = Signal(str)
     reset_settings_requested = Signal()
     reset_region_requested = Signal()
+    reset_translation_requested = Signal()
 
     def __init__(
         self,
         settings_topmost_hotkey=SETTINGS_TOPMOST_HOTKEY,
         temporary_region_hotkey=TEMPORARY_REGION_HOTKEY,
+        translation_hotkey=DEFAULT_TRANSLATION_HOTKEY,
     ):
         super().__init__()
         tab_settings_layout = QVBoxLayout(self)
@@ -186,6 +190,21 @@ class HotkeyTab(QWidget):
             self.temporary_region_hotkey_button,
             self.reset_region_requested,
             temporary_region_tooltip,
+        )
+
+        translation_tooltip = _(
+            "In On-demand mode, use this shortcut to select a screen area and translate it once."
+        )
+        self.translation_hotkey_button = HotkeyCaptureButton(translation_hotkey)
+        self.translation_hotkey_button.hotkeyChanged.connect(
+            self.translation_hotkey_changed.emit
+        )
+        _add_hotkey_row(
+            tab_settings_layout,
+            _("Translate selected area:"),
+            self.translation_hotkey_button,
+            self.reset_translation_requested,
+            translation_tooltip,
         )
 
         hint = QLabel(_("Click a shortcut field, then press the key combination you want to use."))

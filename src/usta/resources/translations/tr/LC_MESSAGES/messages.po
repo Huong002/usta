@@ -311,3 +311,30 @@ msgstr "Bölge"
 
 msgid "You can access the USTA menu here."
 msgstr "USTA menüsüne buradan ulaşabilirsiniz."
+
+msgid "Translation Mode:"
+msgstr "Çeviri Modu:"
+
+msgid "Continuous"
+msgstr "Sürekli"
+
+msgid "On-demand"
+msgstr "İsteğe bağlı"
+
+msgid "Continuous monitors the selected region. On-demand translates a region after a shortcut."
+msgstr "Sürekli mod seçilen alanı izler. İsteğe bağlı mod, kısayola basıldıktan sonra bir alanı çevirir."
+
+msgid "Translate selected area:"
+msgstr "Seçilen alanı çevir:"
+
+msgid "In On-demand mode, use this shortcut to select a screen area and translate it once."
+msgstr "İsteğe bağlı modda, ekran alanı seçip bir kez çevirmek için bu kısayolu kullanın."
+
+msgid "Translating..."
+msgstr "Çevriliyor..."
+
+msgid "Request already in progress"
+msgstr "İstek zaten devam ediyor"
+
+msgid "Each action must use a different shortcut."
+msgstr "Her işlem için farklı bir kısayol kullanılmalıdır."

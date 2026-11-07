@@ -1,13 +1,27 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from typing import Callable
 
 try:
     from pynput import keyboard
-except ImportError:  # pragma: no cover - depends on optional runtime dependency
+except ImportError:  # pragma: no cover - depends on the desktop session
     keyboard = None
+
+
+def _load_keyboard():
+    """Retry loading pynput after the Qt application has initialized its display."""
+    from pynput import keyboard as backend
+
+    return backend
+
+
+def _load_wayland_hotkey():
+    from usta.core.platform.linux.global_shortcuts import WaylandGlobalHotkey
+
+    return WaylandGlobalHotkey
 
 logger = logging.getLogger(__name__)
 _permission_warning_emitted = False
@@ -23,6 +37,7 @@ class GlobalHotkey:
         self._hotkey = None
         self._hotkey_keys = frozenset()
         self._is_pressed = False
+        self._portal_listener = None
 
     def _on_activate(self):
         if self._is_pressed:
@@ -41,10 +56,31 @@ class GlobalHotkey:
             self._is_pressed = False
 
     def start(self) -> bool:
-        global _permission_warning_emitted
+        global _permission_warning_emitted, keyboard
+        if sys.platform.startswith("linux") and os.environ.get("XDG_SESSION_TYPE") == "wayland":
+            if self._portal_listener is not None:
+                return True
+            try:
+                WaylandGlobalHotkey = _load_wayland_hotkey()
+                portal_listener = WaylandGlobalHotkey(self.hotkey, self.callback)
+                if not portal_listener.start():
+                    return False
+                self._portal_listener = portal_listener
+                return True
+            except Exception:
+                logger.exception("Failed to start Wayland global shortcut portal for %s", self.hotkey)
+                return False
+
         if keyboard is None:
-            logger.warning("Global hotkey support is unavailable because pynput is not installed.")
-            return False
+            try:
+                keyboard = _load_keyboard()
+            except ImportError as exc:
+                logger.warning(
+                    "Global hotkey support is unavailable because pynput's keyboard backend "
+                    "could not initialize: %s",
+                    exc,
+                )
+                return False
 
         if self._listener is not None:
             return True
@@ -88,6 +124,10 @@ class GlobalHotkey:
         return True
 
     def stop(self):
+        if self._portal_listener is not None:
+            self._portal_listener.stop()
+            self._portal_listener = None
+            return
         if self._listener is None:
             return
 

@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from usta.application.controller import ApplicationController
 from usta.application.hotkey_controller import HotkeyController
 from usta.application.region_controller import RegionController
+from usta.application.settings import DEFAULT_TRANSLATION_HOTKEY
 from usta.application.worker import OCRWorker
 from usta.config import (
     OS,
@@ -46,6 +47,7 @@ logger = logging.getLogger(__name__)
 
 class ControlPanel(QWidget):
     temporary_region_hotkey_pressed = Signal()
+    translation_hotkey_pressed = Signal()
 
     def __init__(self):
         super().__init__()
@@ -62,13 +64,21 @@ class ControlPanel(QWidget):
         self.region_controller.changed.connect(self._region_changed)
         self._temporary_region_selecting = False
         self._temporary_region_hotkey_armed = True
+        self._manual_region_selecting = False
+        self._translation_hotkey_armed = True
         self.settings_topmost_hotkey = SETTINGS_TOPMOST_HOTKEY
         self.temporary_region_hotkey = TEMPORARY_REGION_HOTKEY
+        self.translation_hotkey = DEFAULT_TRANSLATION_HOTKEY
         self.hotkey_controller = HotkeyController(
             self.temporary_region_hotkey,
             self._emit_temporary_region_hotkey_pressed,
         )
         self.temporary_region_hotkey_pressed.connect(self._handle_temporary_region_hotkey_pressed)
+        self.translation_hotkey_controller = HotkeyController(
+            self.translation_hotkey,
+            self._emit_translation_hotkey_pressed,
+        )
+        self.translation_hotkey_pressed.connect(self._handle_translation_hotkey_pressed)
         self.setWindowTitle("USTA")
 
         # Set window icon
@@ -105,6 +115,7 @@ class ControlPanel(QWidget):
         self.about_tab = AboutTab()
         self.ocr_tab.engine_changed.connect(self.controller.set_engine)
         self.ocr_tab.screen_engine_changed.connect(self.controller.set_screenshot_engine)
+        self.ocr_tab.capture_mode_changed.connect(self.on_capture_mode_changed)
         self.ocr_tab.changed.connect(self.save_settings)
         self.ocr_tab.dpi_changed.connect(self.on_dpi_scale_changed)
         self.ocr_tab.toggle_dpi_requested.connect(self._toggle_dpi_lock)
@@ -122,8 +133,10 @@ class ControlPanel(QWidget):
         self.appearance_tab.opacity_changed.connect(self.on_bg_opacity_changed)
         self.hotkey_tab.settings_hotkey_changed.connect(self.on_settings_topmost_hotkey_changed)
         self.hotkey_tab.region_hotkey_changed.connect(self.on_temporary_region_hotkey_changed)
+        self.hotkey_tab.translation_hotkey_changed.connect(self.on_translation_hotkey_changed)
         self.hotkey_tab.reset_settings_requested.connect(self.reset_settings_topmost_hotkey)
         self.hotkey_tab.reset_region_requested.connect(self.reset_temporary_region_hotkey)
+        self.hotkey_tab.reset_translation_requested.connect(self.reset_translation_hotkey)
         self.save_tab.save_requested.connect(self.settings_presenter.save_preset)
         self.save_tab.load_requested.connect(self.settings_presenter.load_preset)
         self.save_tab.delete_requested.connect(self.settings_presenter.delete_preset)
@@ -177,6 +190,7 @@ class ControlPanel(QWidget):
         self.worker.performance_update.connect(self.update_performance_bar)
         self.worker.timings_update.connect(self.status_tab.update_timings)
         self.worker.running_status.connect(self.update_system_status)
+        self.worker.request_busy.connect(self.update_request_busy)
         self.overlay.main_window_visibility_toggle_requested.connect(self.toggle_main_window)
 
         # Load settings or set defaults
@@ -276,9 +290,12 @@ class ControlPanel(QWidget):
         self.overlay.set_bg_opacity(opacity)
         self.save_settings()
 
-    def _apply_saved_hotkeys(self, settings_topmost_hotkey, temporary_region_hotkey):
+    def _apply_saved_hotkeys(
+        self, settings_topmost_hotkey, temporary_region_hotkey, translation_hotkey
+    ):
         self._set_settings_topmost_hotkey(settings_topmost_hotkey, save=False, show_error=False)
         self._set_temporary_region_hotkey(temporary_region_hotkey, save=False, show_error=False)
+        self._set_translation_hotkey(translation_hotkey, save=False, show_error=False)
         self._sync_hotkey_buttons()
 
     def _sync_hotkey_buttons(self):
@@ -286,8 +303,19 @@ class ControlPanel(QWidget):
             self.hotkey_tab.settings_topmost_hotkey_button.set_hotkey(self.settings_topmost_hotkey)
         if hasattr(self.hotkey_tab, "temporary_region_hotkey_button"):
             self.hotkey_tab.temporary_region_hotkey_button.set_hotkey(self.temporary_region_hotkey)
+        if hasattr(self.hotkey_tab, "translation_hotkey_button"):
+            self.hotkey_tab.translation_hotkey_button.set_hotkey(self.translation_hotkey)
 
     def _set_settings_topmost_hotkey(self, hotkey, save=True, show_error=True):
+        if hotkey in {self.temporary_region_hotkey, self.translation_hotkey}:
+            if show_error:
+                QMessageBox.warning(
+                    self,
+                    _("Invalid shortcut"),
+                    _("Each action must use a different shortcut."),
+                )
+            self._sync_hotkey_buttons()
+            return False
         if self.overlay.set_settings_topmost_hotkey(hotkey):
             self.settings_topmost_hotkey = hotkey
             self._sync_hotkey_buttons()
@@ -308,9 +336,48 @@ class ControlPanel(QWidget):
         if hotkey == self.temporary_region_hotkey:
             self._sync_hotkey_buttons()
             return True
+        if hotkey in {self.settings_topmost_hotkey, self.translation_hotkey}:
+            if show_error:
+                QMessageBox.warning(
+                    self,
+                    _("Invalid shortcut"),
+                    _("Each action must use a different shortcut."),
+                )
+            self._sync_hotkey_buttons()
+            return False
 
         if self.hotkey_controller.set_hotkey(hotkey):
             self.temporary_region_hotkey = hotkey
+            self._sync_hotkey_buttons()
+            if save:
+                self.save_settings()
+            return True
+
+        if show_error:
+            QMessageBox.warning(
+                self,
+                _("Invalid shortcut"),
+                _("Could not register this shortcut. The previous shortcut is still active."),
+            )
+        self._sync_hotkey_buttons()
+        return False
+
+    def _set_translation_hotkey(self, hotkey, save=True, show_error=True):
+        if hotkey == self.translation_hotkey:
+            self._sync_hotkey_buttons()
+            return True
+        if hotkey in {self.settings_topmost_hotkey, self.temporary_region_hotkey}:
+            if show_error:
+                QMessageBox.warning(
+                    self,
+                    _("Invalid shortcut"),
+                    _("Each action must use a different shortcut."),
+                )
+            self._sync_hotkey_buttons()
+            return False
+
+        if self.translation_hotkey_controller.set_hotkey(hotkey):
+            self.translation_hotkey = hotkey
             self._sync_hotkey_buttons()
             if save:
                 self.save_settings()
@@ -331,11 +398,29 @@ class ControlPanel(QWidget):
     def on_temporary_region_hotkey_changed(self, hotkey):
         self._set_temporary_region_hotkey(hotkey)
 
+    def on_translation_hotkey_changed(self, hotkey):
+        self._set_translation_hotkey(hotkey)
+
+    def on_capture_mode_changed(self, mode):
+        self.controller.set_capture_mode(mode)
+        self.save_settings()
+
     def reset_settings_topmost_hotkey(self):
         self._set_settings_topmost_hotkey(SETTINGS_TOPMOST_HOTKEY)
 
     def reset_temporary_region_hotkey(self):
         self._set_temporary_region_hotkey(TEMPORARY_REGION_HOTKEY)
+
+    def reset_translation_hotkey(self):
+        self._set_translation_hotkey(DEFAULT_TRANSLATION_HOTKEY)
+
+    def update_request_busy(self, busy):
+        if busy:
+            self.status_tab.system_status_label.setText(_("Translating..."))
+        else:
+            self.status_tab.system_status_label.setText(
+                _("Running") if self.worker.isRunning() else _("Stopped")
+            )
 
     def update_system_status(self, is_running):
         self.overlay.set_mode(is_running)
@@ -343,7 +428,9 @@ class ControlPanel(QWidget):
             self.status_tab.system_indicator.setStyleSheet(
                 "background-color: #2E7D32; border-radius: 4px;"
             )
-            self.status_tab.system_status_label.setText(_("Running"))
+            self.status_tab.system_status_label.setText(
+                _("Translating...") if self.worker.one_shot_busy else _("Running")
+            )
         else:
             self.status_tab.system_indicator.setStyleSheet(
                 "background-color: #C62828; border-radius: 4px;"
@@ -415,6 +502,9 @@ class ControlPanel(QWidget):
     def _emit_temporary_region_hotkey_pressed(self):
         self.temporary_region_hotkey_pressed.emit()
 
+    def _emit_translation_hotkey_pressed(self):
+        self.translation_hotkey_pressed.emit()
+
     @Slot()
     def _handle_temporary_region_hotkey_pressed(self):
         if (
@@ -432,6 +522,46 @@ class ControlPanel(QWidget):
 
     def _rearm_temporary_region_hotkey(self):
         self._temporary_region_hotkey_armed = True
+
+    @Slot()
+    def _handle_translation_hotkey_pressed(self):
+        if (
+            self._closing
+            or self.controller.capture_mode != "on_demand"
+            or self._region_selecting
+            or self._temporary_region_selecting
+            or self._manual_region_selecting
+            or self.controller.one_shot_busy
+            or not self._translation_hotkey_armed
+        ):
+            return
+        self._translation_hotkey_armed = False
+        QTimer.singleShot(200, self._rearm_translation_hotkey)
+        QTimer.singleShot(200, self.select_translation_region)
+
+    def _rearm_translation_hotkey(self):
+        self._translation_hotkey_armed = True
+
+    def select_translation_region(self):
+        if (
+            self._closing
+            or self.controller.capture_mode != "on_demand"
+            or self._manual_region_selecting
+            or self._temporary_region_selecting
+            or self._region_selecting
+            or self.controller.one_shot_busy
+        ):
+            return
+        self._manual_region_selecting = True
+        try:
+            rect, detected_dpi = self._get_selected_region_and_dpi()
+        finally:
+            self._manual_region_selecting = False
+
+        if rect and not self._closing:
+            dpi_scale = None if self.dpi_locked else detected_dpi
+            if not self.controller.translate_once(rect, dpi_scale or self.controller.dpi_scale):
+                self.status_tab.system_status_label.setText(_("Request already in progress"))
 
     def _get_selected_region_and_dpi(self):
         QApplication.processEvents()
@@ -533,6 +663,7 @@ class ControlPanel(QWidget):
             self._macos_hotkey_window.stop()
         self.region_controller.restore_timer.stop()
         self.hotkey_controller.close()
+        self.translation_hotkey_controller.close()
         self.controller.stop()
         self.overlay.close()
         self.tray.close()

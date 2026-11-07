@@ -18,6 +18,7 @@ class OCRWorker(QThread):
     translation_status = Signal(bool)
     running_status = Signal(bool)
     error_occurred = Signal(str)
+    request_busy = Signal(bool)
     _translation_ready = Signal(object)
     _error_ready = Signal(object)
     _timings_ready = Signal(object)
@@ -36,6 +37,7 @@ class OCRWorker(QThread):
             on_performance=self.performance_update.emit,
             on_timings=self._queue_timings,
             on_translating=self.translation_status.emit,
+            on_request_busy=self.request_busy.emit,
             rect_factory=lambda values: QRect(*values),
             preprocess=ImageProcessor.preprocess_for_tesseract,
         )
@@ -85,6 +87,14 @@ class OCRWorker(QThread):
     def dpi_scale(self, value):
         self.pipeline.configure(replace(self.pipeline.settings, dpi_scale=value))
 
+    @property
+    def capture_mode(self):
+        return self.pipeline.settings.capture_mode
+
+    @property
+    def one_shot_busy(self):
+        return self.pipeline.one_shot_busy
+
     def set_rect(self, qrect, dpi_scale=None):
         settings = self.pipeline.settings
         self.pipeline.configure(
@@ -104,6 +114,9 @@ class OCRWorker(QThread):
     def set_screenshot_engine(self, name):
         self.pipeline.configure(replace(self.pipeline.settings, screenshot_engine=name))
 
+    def set_capture_mode(self, mode):
+        self.pipeline.configure(replace(self.pipeline.settings, capture_mode=mode))
+
     def set_languages(self, source, target):
         self.pipeline.configure(
             replace(self.pipeline.settings, source_lang=source, target_lang=target)
@@ -120,6 +133,19 @@ class OCRWorker(QThread):
             return
         self.pipeline.start()
         super().start()
+
+    def translate_once(self, rect, dpi_scale):
+        if self.capture_mode != "on_demand":
+            return False
+        if not self.isRunning():
+            self.pipeline.start()
+            super().start()
+        elif self.pipeline.is_stopped:
+            self._restart_requested = True
+            return False
+        return self.pipeline.request_once(
+            (rect.x(), rect.y(), rect.width(), rect.height()), dpi_scale
+        )
 
     def _restart_if_requested(self):
         if self._restart_requested:

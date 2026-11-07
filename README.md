@@ -249,6 +249,15 @@ original region after ten seconds. Hiding either window keeps OCR and translatio
 running. Shown windows stay above other applications, retaining the existing
 macOS fullscreen overlay behavior and Linux window-manager support.
 
+USTA also offers **Continuous** and **On-demand** translation modes. Continuous
+mode is the default and keeps monitoring the configured region. In On-demand
+mode, press the **Translate selected area** shortcut (default **Shift+Alt+T**),
+select a screen region, and USTA translates it once. The shortcut can be changed
+in **Hotkeys**. It is separate from **Temporary region** (default
+**Shift+Alt+R**), which still changes the continuous capture region for ten
+seconds. A one-shot shortcut request starts the worker if it is not already
+running.
+
 The **Show/hide main window** shortcut (default **Shift+Alt+M**) uses the same action
 as the tray menu. Existing saved shortcut combinations are retained. Closing the
 main window with **X** hides it; use **Quit Application** in the tray menu to exit.

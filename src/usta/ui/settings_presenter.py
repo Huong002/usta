@@ -7,7 +7,12 @@ from PySide6.QtCore import QRect, QSignalBlocker
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QMessageBox, QWidget
 
-from usta.application.settings import AppSettings, Preset
+from usta.application.settings import (
+    DEFAULT_CAPTURE_MODE,
+    DEFAULT_TRANSLATION_HOTKEY,
+    AppSettings,
+    Preset,
+)
 from usta.config import (
     CONFIG_DIR,
     DPI_SCALE_DEFAULT,
@@ -48,6 +53,8 @@ class SettingsPresenter:
             ),
             "dpi_scale": self.view.controller.dpi_scale,
             "screenshot_engine": self.view.ocr_tab.combo_screenshot.currentText(),
+            "capture_mode": self.view.ocr_tab.combo_capture_mode.currentData(),
+            "translation_hotkey": self.view.translation_hotkey,
             "settings_topmost_hotkey": self.view.settings_topmost_hotkey,
             "temporary_region_hotkey": self.view.temporary_region_hotkey,
         }
@@ -72,6 +79,11 @@ class SettingsPresenter:
             )
             self.view.translation_tab.combo_source.setCurrentText(s.get("source_lang", "English"))
             self.view.translation_tab.combo_target.setCurrentText(s.get("target_lang", "Turkish"))
+            capture_mode = s.get("capture_mode", DEFAULT_CAPTURE_MODE)
+            self.view.ocr_tab.combo_capture_mode.setCurrentIndex(
+                max(0, self.view.ocr_tab.combo_capture_mode.findData(capture_mode))
+            )
+            self.view.controller.set_capture_mode(capture_mode)
 
             font_family = s.get("font_family", "Arial")
             self.view.appearance_tab.font_picker.setCurrentFont(QFont(font_family))
@@ -125,6 +137,7 @@ class SettingsPresenter:
             self.view._apply_saved_hotkeys(
                 s.get("settings_topmost_hotkey", SETTINGS_TOPMOST_HOTKEY),
                 s.get("temporary_region_hotkey", TEMPORARY_REGION_HOTKEY),
+                s.get("translation_hotkey", DEFAULT_TRANSLATION_HOTKEY),
             )
 
             self.view.controller.set_engine(self.view.ocr_tab.combo_ocr.currentText())
@@ -134,7 +147,11 @@ class SettingsPresenter:
             self.view.update_languages()
         except (OSError, ValueError) as exc:
             logger.error(f"Settings load error: {exc}")
-            self.view._apply_saved_hotkeys(SETTINGS_TOPMOST_HOTKEY, TEMPORARY_REGION_HOTKEY)
+            self.view._apply_saved_hotkeys(
+                SETTINGS_TOPMOST_HOTKEY,
+                TEMPORARY_REGION_HOTKEY,
+                DEFAULT_TRANSLATION_HOTKEY,
+            )
             self.view.update_languages()
         finally:
             del blockers

@@ -26,6 +26,13 @@ class TranslationRequest:
 
 
 @dataclass(frozen=True)
+class CaptureRequest:
+    capture_rect: tuple[int, int, int, int]
+    dpi_scale: float
+    session_id: int
+
+
+@dataclass(frozen=True)
 class TranslationResult:
     translated_text: str
     source_lang: str

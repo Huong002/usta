@@ -17,6 +17,14 @@ class ApplicationController:
     def dpi_scale(self, value):
         self.worker.dpi_scale = value
 
+    @property
+    def capture_mode(self):
+        return self.worker.capture_mode
+
+    @property
+    def one_shot_busy(self):
+        return self.worker.one_shot_busy
+
     def set_rect(self, rect, dpi_scale=None):
         if dpi_scale is None:
             self.worker.set_rect(rect)
@@ -32,6 +40,9 @@ class ApplicationController:
     def set_screenshot_engine(self, name):
         self.worker.set_screenshot_engine(name)
 
+    def set_capture_mode(self, mode):
+        self.worker.set_capture_mode(mode)
+
     def set_languages(self, source, target):
         self.worker.set_languages(source, target)
 
@@ -46,3 +57,6 @@ class ApplicationController:
 
     def stop(self):
         self.worker.stop()
+
+    def translate_once(self, rect, dpi_scale):
+        return self.worker.translate_once(rect, dpi_scale)

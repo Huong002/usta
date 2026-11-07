@@ -4,6 +4,9 @@ import math
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any
 
+DEFAULT_CAPTURE_MODE = "continuous"
+DEFAULT_TRANSLATION_HOTKEY = "<alt>+c"
+
 
 @dataclass
 class Preset:
@@ -74,3 +77,14 @@ class AppSettings(Preset):
     screenshot_engine: str = "Portal"
     settings_topmost_hotkey: str = "<shift>+<alt>+m"
     temporary_region_hotkey: str = "<shift>+<alt>+r"
+    capture_mode: str = DEFAULT_CAPTURE_MODE
+    translation_hotkey: str = DEFAULT_TRANSLATION_HOTKEY
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        settings = super().from_dict(data)
+        if settings.capture_mode not in {DEFAULT_CAPTURE_MODE, "on_demand"}:
+            settings.capture_mode = DEFAULT_CAPTURE_MODE
+        if not settings.translation_hotkey.strip():
+            settings.translation_hotkey = DEFAULT_TRANSLATION_HOTKEY
+        return settings
