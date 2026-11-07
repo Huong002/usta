@@ -40,6 +40,10 @@ class SettingsStoreTests(unittest.TestCase):
         self.assertEqual(self.store.load(), loaded)
         self.assertEqual(os.stat(self.root / "settings.json").st_mode & 0o777, 0o600)
 
+    def test_llm_api_key_roundtrips_in_settings(self):
+        self.store.save(AppSettings(llm_api_key="private-gemini-key"))
+        self.assertEqual(self.store.load().llm_api_key, "private-gemini-key")
+
     def test_failed_replace_preserves_previous_settings(self):
         self.store.save(AppSettings(font_size=24))
         with patch("usta.infrastructure.settings_store.os.replace", side_effect=OSError("full")):

@@ -46,6 +46,7 @@ class SettingsPresenter:
             "bg_color": self.view.overlay.bg_color,
             "bg_opacity": self.view.overlay.bg_opacity,
             "translator_api_keys": self.view.api_keys,
+            "llm_api_key": self.view.llm_tab.api_key_input.text(),
             "capture_rect": (
                 self.view.controller.capture_rect.x(),
                 self.view.controller.capture_rect.y(),
@@ -135,6 +136,7 @@ class SettingsPresenter:
             # Load API keys
             self.view.api_keys = s.get("translator_api_keys", {})
             self._apply_api_key_for_current_engine()
+            self.view.llm_tab.set_api_key(s.get("llm_api_key", ""))
 
             self.view._apply_saved_hotkeys(
                 s.get("settings_topmost_hotkey", SETTINGS_TOPMOST_HOTKEY),

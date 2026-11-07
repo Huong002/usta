@@ -37,6 +37,17 @@ class OverlayInteractionTests(unittest.TestCase):
 
         self.assertEqual(self.overlay.label.text(), "persistent translation")
 
+    def test_llm_button_stays_next_to_visible_translation_overlay(self):
+        button = self.overlay.llm_button
+        self.assertTrue(button.isVisible())
+        left_aligned = button.x() == self.overlay.x() + self.overlay.width() + 6
+        right_aligned = button.x() + button.width() + 6 == self.overlay.x()
+        self.assertTrue(left_aligned or right_aligned)
+        self.overlay.hide()
+        self.assertFalse(button.isVisible())
+        self.overlay.show()
+        self.assertTrue(button.isVisible())
+
     def mouse(self, kind, local, *, global_pos=None, buttons=Qt.NoButton):
         position = QPoint(*local)
         global_pos = global_pos or self.overlay.mapToGlobal(position)

@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QCursor, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QToolButton, QVBoxLayout, QWidget
 
 from usta.config import OS, SETTINGS_TOPMOST_HOTKEY
 from usta.core.shortcut import GlobalHotkey
@@ -85,6 +85,7 @@ class TransparentOverlay(QWidget):
 
     main_window_visibility_toggle_requested = Signal()
     settings_topmost_hotkey_pressed = Signal()
+    llm_chat_requested = Signal()
 
     def __init__(self):
         super().__init__()
@@ -130,6 +131,20 @@ class TransparentOverlay(QWidget):
         self.update_style()
         self.layout.addWidget(self.label)
 
+        self.llm_button = QToolButton(self)
+        self.llm_button.setWindowFlags(
+            Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus
+        )
+        self.llm_button.setText("LLM")
+        self.llm_button.setToolTip(_("Open Gemini chat for quick research"))
+        self.llm_button.setFixedSize(54, 32)
+        self.llm_button.setStyleSheet(
+            "QToolButton { background: #1565C0; color: white; border: 1px solid #90CAF9; "
+            "border-radius: 5px; font-weight: bold; padding: 4px; }"
+            "QToolButton:hover { background: #1976D2; }"
+        )
+        self.llm_button.clicked.connect(self.llm_chat_requested.emit)
+
         self._settings_topmost_hotkey_armed = True
         self.settings_topmost_hotkey = SETTINGS_TOPMOST_HOTKEY
         self._settings_topmost_hotkey = GlobalHotkey(
@@ -148,17 +163,42 @@ class TransparentOverlay(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
+        self._position_llm_button()
+        self.llm_button.show()
         if self._macos_rules is not None:
             self._macos_rules.start()
         if self._macos_cursor is not None:
             self._macos_cursor.start()
 
     def hideEvent(self, event):
+        self.llm_button.hide()
         if self._macos_rules is not None:
             self._macos_rules.stop()
         if self._macos_cursor is not None:
             self._macos_cursor.stop()
         super().hideEvent(event)
+
+    def moveEvent(self, event):
+        super().moveEvent(event)
+        self._position_llm_button()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._position_llm_button()
+
+    def _position_llm_button(self):
+        button = getattr(self, "llm_button", None)
+        if button is None:
+            return
+        x = self.x() + self.width() + 6
+        y = self.y()
+        screen = QApplication.screenAt(self.frameGeometry().center())
+        if screen is not None:
+            available = screen.availableGeometry()
+            if x + button.width() > available.right() + 1:
+                x = self.x() - button.width() - 6
+            y = min(max(y, available.top()), available.bottom() - button.height() + 1)
+        button.move(x, y)
 
     def _emit_settings_topmost_hotkey_pressed(self):
         self.settings_topmost_hotkey_pressed.emit()

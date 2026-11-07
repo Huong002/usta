@@ -5,6 +5,7 @@ from usta.ui.tabs.ocr_tab import OCRTab
 from usta.ui.tabs.save_tab import SaveTab
 from usta.ui.tabs.status_tab import StatusTab
 from usta.ui.tabs.translation_tab import TranslationTab
+from usta.ui.tabs.llm_tab import LLMTab
 
 __all__ = [
     "OCRTab",
@@ -14,4 +15,5 @@ __all__ = [
     "SaveTab",
     "StatusTab",
     "AboutTab",
+    "LLMTab",
 ]

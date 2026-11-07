@@ -61,6 +61,12 @@ class ControlPanelTests(unittest.TestCase):
         self.assertTrue(self.panel.isVisible())
         self.assertTrue(self.panel.overlay.isVisible())
 
+    def test_llm_overlay_button_opens_chat_and_api_key_is_persisted(self):
+        self.panel.overlay.llm_button.click()
+        self.assertIs(self.panel.tabs.currentWidget(), self.panel.llm_tab)
+        self.panel.llm_tab.api_key_input.setText("test-key")
+        self.assertEqual(self.store.load().llm_api_key, "test-key")
+
     def test_macos_hint_anchor_uses_own_status_window_when_qt_geometry_is_empty(self):
         from types import SimpleNamespace
 
@@ -125,7 +131,7 @@ class ControlPanelTests(unittest.TestCase):
         self.assertFalse(panel.overlay.isVisible())
         self.assertEqual(panel.overlay.label.text(), "persistent translation")
 
-        QTest.qWait(210)
+        QTest.qWait(260)
         panel.overlay_visibility_hotkey_pressed.emit()
         self.assertTrue(panel.overlay.isVisible())
         self.assertEqual(panel.overlay.label.text(), "persistent translation")

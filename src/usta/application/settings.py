@@ -52,6 +52,8 @@ class Preset:
                     if isinstance(value, dict)
                     else {}
                 )
+            elif name == "llm_api_key":
+                value = value if isinstance(value, str) else default
             elif type(value) is not type(default):
                 value = default
             if name == "font_size" and value <= 0:
@@ -74,6 +76,7 @@ class AppSettings(Preset):
     source_lang: str = "English"
     target_lang: str = "Turkish"
     translator_api_keys: dict[str, str] = field(default_factory=dict)
+    llm_api_key: str = ""
     dpi_scale: float = 1.0
     screenshot_engine: str = "Portal"
     settings_topmost_hotkey: str = "<shift>+<alt>+m"

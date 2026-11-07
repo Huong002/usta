@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from usta.application.controller import ApplicationController
 from usta.application.hotkey_controller import HotkeyController
+from usta.application.llm_worker import GeminiChatWorker
 from usta.application.region_controller import RegionController
 from usta.application.settings import (
     DEFAULT_OVERLAY_TOGGLE_HOTKEY,
@@ -39,6 +40,7 @@ from usta.ui.tabs import (
     AboutTab,
     AppearanceTab,
     HotkeyTab,
+    LLMTab,
     OCRTab,
     SaveTab,
     StatusTab,
@@ -57,6 +59,7 @@ class ControlPanel(QWidget):
         super().__init__()
         self._closing = False
         self._waiting_for_worker = False
+        self._waiting_for_llm_workers = False
         self._shutdown_complete = False
         self._region_selecting = False
         self._loading_settings = True
@@ -117,6 +120,7 @@ class ControlPanel(QWidget):
 
         # --- Tabs ---
         self.tabs = QTabWidget()
+        self._llm_workers = []
         self.api_keys = {}
         self.dpi_locked = False
         self.ocr_tab = OCRTab()
@@ -126,6 +130,10 @@ class ControlPanel(QWidget):
         self.save_tab = SaveTab()
         self.status_tab = StatusTab()
         self.about_tab = AboutTab()
+        self.llm_tab = LLMTab()
+        self.llm_tab.api_key_changed.connect(self.save_settings)
+        self.llm_tab.message_submitted.connect(self._start_llm_request)
+        self.overlay.llm_chat_requested.connect(self._open_llm_chat)
         self.ocr_tab.engine_changed.connect(self.controller.set_engine)
         self.ocr_tab.screen_engine_changed.connect(self.controller.set_screenshot_engine)
         self.ocr_tab.capture_mode_changed.connect(self.on_capture_mode_changed)
@@ -167,6 +175,7 @@ class ControlPanel(QWidget):
         self.tabs.addTab(self.save_tab, _("Save"))
         self.tabs.addTab(self.hotkey_tab, _("Hotkeys"))
         self.tabs.addTab(self.about_tab, _("About"))
+        self.tabs.addTab(self.llm_tab, "LLM Chat")
 
         layout.addWidget(self.tabs)
 
@@ -752,6 +761,14 @@ class ControlPanel(QWidget):
                 self.worker.finished.connect(self.close)
                 self.controller.stop()
             return
+        running_llm_workers = [worker for worker in self._llm_workers if worker.isRunning()]
+        if running_llm_workers:
+            event.ignore()
+            if not self._waiting_for_llm_workers:
+                self._waiting_for_llm_workers = True
+                for worker in running_llm_workers:
+                    worker.finished.connect(self._finish_llm_shutdown)
+            return
         self.worker.close()
         if self._macos_hotkey_window is not None:
             self._macos_hotkey_window.stop()
@@ -773,6 +790,27 @@ class ControlPanel(QWidget):
 
     def save_settings(self):
         self.settings_presenter.save_settings()
+
+    def _start_llm_request(self, api_key, messages, model):
+        worker = GeminiChatWorker(api_key, messages, model)
+        self._llm_workers.append(worker)
+        worker.answered.connect(self.llm_tab.add_answer)
+        worker.failed.connect(self.llm_tab.show_error)
+        worker.finished.connect(lambda: self._remove_llm_worker(worker))
+        worker.start()
+
+    def _open_llm_chat(self):
+        self.show_main_window()
+        self.tabs.setCurrentWidget(self.llm_tab)
+
+    def _remove_llm_worker(self, worker):
+        if worker in self._llm_workers:
+            self._llm_workers.remove(worker)
+
+    def _finish_llm_shutdown(self):
+        if not any(worker.isRunning() for worker in self._llm_workers):
+            self._waiting_for_llm_workers = False
+            QTimer.singleShot(0, self.close)
 
     def load_settings(self):
         self.settings_presenter.load_settings()
