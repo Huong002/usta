@@ -49,7 +49,7 @@ class PlatformHotkeyTests(unittest.TestCase):
             hotkey._portal_request = mock.AsyncMock(
                 side_effect=[
                     {"session_handle": Variant("o", "/portal/session/usta")},
-                    {"shortcuts": [(hotkey._token, {})]},
+                    {"shortcuts": Variant("a(sa{sv})", [[hotkey._token, {}]])},
                 ]
             )
             with mock.patch(

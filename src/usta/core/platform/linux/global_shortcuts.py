@@ -160,7 +160,8 @@ class WaylandGlobalHotkey:
             ],
             bind_token,
         )
-        if not any(shortcut_id == self._token for shortcut_id, _ in bind_results.get("shortcuts", [])):
+        shortcuts = bind_results.get("shortcuts", Variant("a(sa{sv})", [])).value
+        if not any(shortcut_id == self._token for shortcut_id, _ in shortcuts):
             logger.warning(
                 "The desktop portal did not bind USTA shortcut %s. Review the Global Shortcuts prompt or desktop settings.",
                 self.hotkey,
