@@ -354,3 +354,9 @@ msgstr "Запит уже виконується"
 
 msgid "Each action must use a different shortcut."
 msgstr "Для кожної дії потрібно використовувати окреме скорочення."
+
+msgid "Translation overlay:"
+msgstr "Накладка перекладу:"
+
+msgid "Hide or show the translation overlay. Its current text is kept while hidden."
+msgstr "Сховати або показати накладку перекладу. Поточний текст зберігається, поки її приховано."

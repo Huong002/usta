@@ -18,7 +18,10 @@ from PySide6.QtWidgets import (
 from usta.application.controller import ApplicationController
 from usta.application.hotkey_controller import HotkeyController
 from usta.application.region_controller import RegionController
-from usta.application.settings import DEFAULT_TRANSLATION_HOTKEY
+from usta.application.settings import (
+    DEFAULT_OVERLAY_TOGGLE_HOTKEY,
+    DEFAULT_TRANSLATION_HOTKEY,
+)
 from usta.application.worker import OCRWorker
 from usta.config import (
     OS,
@@ -48,6 +51,7 @@ logger = logging.getLogger(__name__)
 class ControlPanel(QWidget):
     temporary_region_hotkey_pressed = Signal()
     translation_hotkey_pressed = Signal()
+    overlay_visibility_hotkey_pressed = Signal()
 
     def __init__(self):
         super().__init__()
@@ -66,9 +70,11 @@ class ControlPanel(QWidget):
         self._temporary_region_hotkey_armed = True
         self._manual_region_selecting = False
         self._translation_hotkey_armed = True
+        self._overlay_visibility_hotkey_armed = True
         self.settings_topmost_hotkey = SETTINGS_TOPMOST_HOTKEY
         self.temporary_region_hotkey = TEMPORARY_REGION_HOTKEY
         self.translation_hotkey = DEFAULT_TRANSLATION_HOTKEY
+        self.overlay_toggle_hotkey = DEFAULT_OVERLAY_TOGGLE_HOTKEY
         self.hotkey_controller = HotkeyController(
             self.temporary_region_hotkey,
             self._emit_temporary_region_hotkey_pressed,
@@ -79,6 +85,13 @@ class ControlPanel(QWidget):
             self._emit_translation_hotkey_pressed,
         )
         self.translation_hotkey_pressed.connect(self._handle_translation_hotkey_pressed)
+        self.overlay_toggle_hotkey_controller = HotkeyController(
+            self.overlay_toggle_hotkey,
+            self._emit_overlay_visibility_hotkey_pressed,
+        )
+        self.overlay_visibility_hotkey_pressed.connect(
+            self._handle_overlay_visibility_hotkey_pressed
+        )
         self.setWindowTitle("USTA")
 
         # Set window icon
@@ -134,9 +147,15 @@ class ControlPanel(QWidget):
         self.hotkey_tab.settings_hotkey_changed.connect(self.on_settings_topmost_hotkey_changed)
         self.hotkey_tab.region_hotkey_changed.connect(self.on_temporary_region_hotkey_changed)
         self.hotkey_tab.translation_hotkey_changed.connect(self.on_translation_hotkey_changed)
+        self.hotkey_tab.overlay_visibility_hotkey_changed.connect(
+            self.on_overlay_visibility_hotkey_changed
+        )
         self.hotkey_tab.reset_settings_requested.connect(self.reset_settings_topmost_hotkey)
         self.hotkey_tab.reset_region_requested.connect(self.reset_temporary_region_hotkey)
         self.hotkey_tab.reset_translation_requested.connect(self.reset_translation_hotkey)
+        self.hotkey_tab.reset_overlay_visibility_requested.connect(
+            self.reset_overlay_visibility_hotkey
+        )
         self.save_tab.save_requested.connect(self.settings_presenter.save_preset)
         self.save_tab.load_requested.connect(self.settings_presenter.load_preset)
         self.save_tab.delete_requested.connect(self.settings_presenter.delete_preset)
@@ -291,11 +310,16 @@ class ControlPanel(QWidget):
         self.save_settings()
 
     def _apply_saved_hotkeys(
-        self, settings_topmost_hotkey, temporary_region_hotkey, translation_hotkey
+        self,
+        settings_topmost_hotkey,
+        temporary_region_hotkey,
+        translation_hotkey,
+        overlay_toggle_hotkey,
     ):
         self._set_settings_topmost_hotkey(settings_topmost_hotkey, save=False, show_error=False)
         self._set_temporary_region_hotkey(temporary_region_hotkey, save=False, show_error=False)
         self._set_translation_hotkey(translation_hotkey, save=False, show_error=False)
+        self._set_overlay_visibility_hotkey(overlay_toggle_hotkey, save=False, show_error=False)
         self._sync_hotkey_buttons()
 
     def _sync_hotkey_buttons(self):
@@ -305,9 +329,17 @@ class ControlPanel(QWidget):
             self.hotkey_tab.temporary_region_hotkey_button.set_hotkey(self.temporary_region_hotkey)
         if hasattr(self.hotkey_tab, "translation_hotkey_button"):
             self.hotkey_tab.translation_hotkey_button.set_hotkey(self.translation_hotkey)
+        if hasattr(self.hotkey_tab, "overlay_visibility_hotkey_button"):
+            self.hotkey_tab.overlay_visibility_hotkey_button.set_hotkey(
+                self.overlay_toggle_hotkey
+            )
 
     def _set_settings_topmost_hotkey(self, hotkey, save=True, show_error=True):
-        if hotkey in {self.temporary_region_hotkey, self.translation_hotkey}:
+        if hotkey in {
+            self.temporary_region_hotkey,
+            self.translation_hotkey,
+            self.overlay_toggle_hotkey,
+        }:
             if show_error:
                 QMessageBox.warning(
                     self,
@@ -336,7 +368,11 @@ class ControlPanel(QWidget):
         if hotkey == self.temporary_region_hotkey:
             self._sync_hotkey_buttons()
             return True
-        if hotkey in {self.settings_topmost_hotkey, self.translation_hotkey}:
+        if hotkey in {
+            self.settings_topmost_hotkey,
+            self.translation_hotkey,
+            self.overlay_toggle_hotkey,
+        }:
             if show_error:
                 QMessageBox.warning(
                     self,
@@ -366,7 +402,11 @@ class ControlPanel(QWidget):
         if hotkey == self.translation_hotkey:
             self._sync_hotkey_buttons()
             return True
-        if hotkey in {self.settings_topmost_hotkey, self.temporary_region_hotkey}:
+        if hotkey in {
+            self.settings_topmost_hotkey,
+            self.temporary_region_hotkey,
+            self.overlay_toggle_hotkey,
+        }:
             if show_error:
                 QMessageBox.warning(
                     self,
@@ -392,6 +432,40 @@ class ControlPanel(QWidget):
         self._sync_hotkey_buttons()
         return False
 
+    def _set_overlay_visibility_hotkey(self, hotkey, save=True, show_error=True):
+        if hotkey == self.overlay_toggle_hotkey:
+            self._sync_hotkey_buttons()
+            return True
+        if hotkey in {
+            self.settings_topmost_hotkey,
+            self.temporary_region_hotkey,
+            self.translation_hotkey,
+        }:
+            if show_error:
+                QMessageBox.warning(
+                    self,
+                    _("Invalid shortcut"),
+                    _("Each action must use a different shortcut."),
+                )
+            self._sync_hotkey_buttons()
+            return False
+
+        if self.overlay_toggle_hotkey_controller.set_hotkey(hotkey):
+            self.overlay_toggle_hotkey = hotkey
+            self._sync_hotkey_buttons()
+            if save:
+                self.save_settings()
+            return True
+
+        if show_error:
+            QMessageBox.warning(
+                self,
+                _("Invalid shortcut"),
+                _("Could not register this shortcut. The previous shortcut is still active."),
+            )
+        self._sync_hotkey_buttons()
+        return False
+
     def on_settings_topmost_hotkey_changed(self, hotkey):
         self._set_settings_topmost_hotkey(hotkey)
 
@@ -400,6 +474,9 @@ class ControlPanel(QWidget):
 
     def on_translation_hotkey_changed(self, hotkey):
         self._set_translation_hotkey(hotkey)
+
+    def on_overlay_visibility_hotkey_changed(self, hotkey):
+        self._set_overlay_visibility_hotkey(hotkey)
 
     def on_capture_mode_changed(self, mode):
         self.controller.set_capture_mode(mode)
@@ -413,6 +490,9 @@ class ControlPanel(QWidget):
 
     def reset_translation_hotkey(self):
         self._set_translation_hotkey(DEFAULT_TRANSLATION_HOTKEY)
+
+    def reset_overlay_visibility_hotkey(self):
+        self._set_overlay_visibility_hotkey(DEFAULT_OVERLAY_TOGGLE_HOTKEY)
 
     def update_request_busy(self, busy):
         if busy:
@@ -504,6 +584,20 @@ class ControlPanel(QWidget):
 
     def _emit_translation_hotkey_pressed(self):
         self.translation_hotkey_pressed.emit()
+
+    def _emit_overlay_visibility_hotkey_pressed(self):
+        self.overlay_visibility_hotkey_pressed.emit()
+
+    @Slot()
+    def _handle_overlay_visibility_hotkey_pressed(self):
+        if self._closing or not self._overlay_visibility_hotkey_armed:
+            return
+        self._overlay_visibility_hotkey_armed = False
+        self.toggle_overlay()
+        QTimer.singleShot(200, self._rearm_overlay_visibility_hotkey)
+
+    def _rearm_overlay_visibility_hotkey(self):
+        self._overlay_visibility_hotkey_armed = True
 
     @Slot()
     def _handle_temporary_region_hotkey_pressed(self):
@@ -664,6 +758,7 @@ class ControlPanel(QWidget):
         self.region_controller.restore_timer.stop()
         self.hotkey_controller.close()
         self.translation_hotkey_controller.close()
+        self.overlay_toggle_hotkey_controller.close()
         self.controller.stop()
         self.overlay.close()
         self.tray.close()

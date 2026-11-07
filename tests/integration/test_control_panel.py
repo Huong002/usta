@@ -117,6 +117,19 @@ class ControlPanelTests(unittest.TestCase):
             panel.tray.refresh()
             self.assertEqual(panel.tray.main_action.text(), "Hide Main Window")
 
+    def test_overlay_visibility_shortcut_hides_and_restores_translation(self):
+        panel = self.panel
+        panel.overlay.update_text("persistent translation")
+
+        panel.overlay_visibility_hotkey_pressed.emit()
+        self.assertFalse(panel.overlay.isVisible())
+        self.assertEqual(panel.overlay.label.text(), "persistent translation")
+
+        QTest.qWait(210)
+        panel.overlay_visibility_hotkey_pressed.emit()
+        self.assertTrue(panel.overlay.isVisible())
+        self.assertEqual(panel.overlay.label.text(), "persistent translation")
+
     def test_delayed_startup_alignment_does_not_reveal_hidden_overlay(self):
         self.panel.overlay.hide()
         self.panel.align_overlay()

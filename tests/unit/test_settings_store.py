@@ -20,6 +20,9 @@ class SettingsStoreTests(unittest.TestCase):
     def test_default_translation_shortcut_is_alt_c(self):
         self.assertEqual(AppSettings().translation_hotkey, "<alt>+c")
 
+    def test_default_overlay_toggle_shortcut_is_shift_alt_o(self):
+        self.assertEqual(AppSettings().overlay_toggle_hotkey, "<shift>+<alt>+o")
+
     def test_roundtrip_and_legacy_migration_preserve_values(self):
         original = {
             "capture_rect": (-300, 20, 400, 60),

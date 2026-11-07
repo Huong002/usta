@@ -65,6 +65,7 @@ class TabSignalTests(unittest.TestCase):
             (appearance.btn_bg_color, appearance.background_color_requested),
             (resets[0], hotkeys.reset_settings_requested),
             (resets[1], hotkeys.reset_region_requested),
+            (resets[3], hotkeys.reset_overlay_visibility_requested),
         ]
         for button, signal in cases:
             with self.subTest(button=button.text()):

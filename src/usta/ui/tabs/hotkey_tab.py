@@ -2,7 +2,10 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from usta.application.settings import DEFAULT_TRANSLATION_HOTKEY
+from usta.application.settings import (
+    DEFAULT_OVERLAY_TOGGLE_HOTKEY,
+    DEFAULT_TRANSLATION_HOTKEY,
+)
 from usta.config import SETTINGS_TOPMOST_HOTKEY, TEMPORARY_REGION_HOTKEY
 from usta.i18n import _
 
@@ -150,15 +153,18 @@ class HotkeyTab(QWidget):
     settings_hotkey_changed = Signal(str)
     region_hotkey_changed = Signal(str)
     translation_hotkey_changed = Signal(str)
+    overlay_visibility_hotkey_changed = Signal(str)
     reset_settings_requested = Signal()
     reset_region_requested = Signal()
     reset_translation_requested = Signal()
+    reset_overlay_visibility_requested = Signal()
 
     def __init__(
         self,
         settings_topmost_hotkey=SETTINGS_TOPMOST_HOTKEY,
         temporary_region_hotkey=TEMPORARY_REGION_HOTKEY,
         translation_hotkey=DEFAULT_TRANSLATION_HOTKEY,
+        overlay_toggle_hotkey=DEFAULT_OVERLAY_TOGGLE_HOTKEY,
     ):
         super().__init__()
         tab_settings_layout = QVBoxLayout(self)
@@ -205,6 +211,21 @@ class HotkeyTab(QWidget):
             self.translation_hotkey_button,
             self.reset_translation_requested,
             translation_tooltip,
+        )
+
+        overlay_visibility_tooltip = _(
+            "Hide or show the translation overlay. Its current text is kept while hidden."
+        )
+        self.overlay_visibility_hotkey_button = HotkeyCaptureButton(overlay_toggle_hotkey)
+        self.overlay_visibility_hotkey_button.hotkeyChanged.connect(
+            self.overlay_visibility_hotkey_changed.emit
+        )
+        _add_hotkey_row(
+            tab_settings_layout,
+            _("Translation overlay:"),
+            self.overlay_visibility_hotkey_button,
+            self.reset_overlay_visibility_requested,
+            overlay_visibility_tooltip,
         )
 
         hint = QLabel(_("Click a shortcut field, then press the key combination you want to use."))

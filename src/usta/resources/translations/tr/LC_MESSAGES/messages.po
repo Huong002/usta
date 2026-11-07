@@ -338,3 +338,9 @@ msgstr "İstek zaten devam ediyor"
 
 msgid "Each action must use a different shortcut."
 msgstr "Her işlem için farklı bir kısayol kullanılmalıdır."
+
+msgid "Translation overlay:"
+msgstr "Çeviri katmanı:"
+
+msgid "Hide or show the translation overlay. Its current text is kept while hidden."
+msgstr "Çeviri katmanını gizleyin veya gösterin. Gizliyken mevcut metin korunur."

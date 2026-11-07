@@ -6,6 +6,7 @@ from typing import Any
 
 DEFAULT_CAPTURE_MODE = "continuous"
 DEFAULT_TRANSLATION_HOTKEY = "<alt>+c"
+DEFAULT_OVERLAY_TOGGLE_HOTKEY = "<shift>+<alt>+o"
 
 
 @dataclass
@@ -79,6 +80,7 @@ class AppSettings(Preset):
     temporary_region_hotkey: str = "<shift>+<alt>+r"
     capture_mode: str = DEFAULT_CAPTURE_MODE
     translation_hotkey: str = DEFAULT_TRANSLATION_HOTKEY
+    overlay_toggle_hotkey: str = DEFAULT_OVERLAY_TOGGLE_HOTKEY
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
@@ -87,4 +89,6 @@ class AppSettings(Preset):
             settings.capture_mode = DEFAULT_CAPTURE_MODE
         if not settings.translation_hotkey.strip():
             settings.translation_hotkey = DEFAULT_TRANSLATION_HOTKEY
+        if not settings.overlay_toggle_hotkey.strip():
+            settings.overlay_toggle_hotkey = DEFAULT_OVERLAY_TOGGLE_HOTKEY
         return settings

@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QMessageBox, QWidget
 
 from usta.application.settings import (
     DEFAULT_CAPTURE_MODE,
+    DEFAULT_OVERLAY_TOGGLE_HOTKEY,
     DEFAULT_TRANSLATION_HOTKEY,
     AppSettings,
     Preset,
@@ -55,6 +56,7 @@ class SettingsPresenter:
             "screenshot_engine": self.view.ocr_tab.combo_screenshot.currentText(),
             "capture_mode": self.view.ocr_tab.combo_capture_mode.currentData(),
             "translation_hotkey": self.view.translation_hotkey,
+            "overlay_toggle_hotkey": self.view.overlay_toggle_hotkey,
             "settings_topmost_hotkey": self.view.settings_topmost_hotkey,
             "temporary_region_hotkey": self.view.temporary_region_hotkey,
         }
@@ -138,6 +140,7 @@ class SettingsPresenter:
                 s.get("settings_topmost_hotkey", SETTINGS_TOPMOST_HOTKEY),
                 s.get("temporary_region_hotkey", TEMPORARY_REGION_HOTKEY),
                 s.get("translation_hotkey", DEFAULT_TRANSLATION_HOTKEY),
+                s.get("overlay_toggle_hotkey", DEFAULT_OVERLAY_TOGGLE_HOTKEY),
             )
 
             self.view.controller.set_engine(self.view.ocr_tab.combo_ocr.currentText())
@@ -151,6 +154,7 @@ class SettingsPresenter:
                 SETTINGS_TOPMOST_HOTKEY,
                 TEMPORARY_REGION_HOTKEY,
                 DEFAULT_TRANSLATION_HOTKEY,
+                DEFAULT_OVERLAY_TOGGLE_HOTKEY,
             )
             self.view.update_languages()
         finally:
