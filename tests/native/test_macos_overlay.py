@@ -138,7 +138,6 @@ class MacOSOverlayTests(unittest.TestCase):
                         "Translation update stole fullscreen focus",
                     )
                     self.assertEqual(self.widget.label.text(), text)
-                    self.assertTrue(self.widget.hide_timer.isActive())
                     self.assertTrue(native.isOnActiveSpace())
                 exit_file.touch()
                 wait_for_fullscreen(False)

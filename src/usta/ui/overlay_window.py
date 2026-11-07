@@ -139,10 +139,6 @@ class TransparentOverlay(QWidget):
         self.settings_topmost_hotkey_pressed.connect(self._handle_settings_topmost_hotkey_pressed)
         self._settings_topmost_hotkey.start()
 
-        self.hide_timer = QTimer(self)
-        self.hide_timer.setSingleShot(True)
-        self.hide_timer.timeout.connect(lambda: self.label.setText(""))
-
         # Manual drag state (X11BypassWindowManagerHint bypasses WM).
         self._drag_mode = None
         self._drag_edges = Qt.Edges()
@@ -246,8 +242,6 @@ class TransparentOverlay(QWidget):
                 self._macos_rules.order_front_without_activation()
             else:
                 self.raise_()
-        self.hide_timer.start(10000)
-
     @Slot(str)
     def show_error(self, text):
         self.update_text(text)
@@ -284,11 +278,6 @@ class TransparentOverlay(QWidget):
         if scan:
             if self._showing_error:
                 self._showing_error = False
-                self.label.setText(_("Translation will appear here."))
-            self.hide_timer.start(10000)
-        else:
-            self.hide_timer.stop()
-            if not self._showing_error:
                 self.label.setText(_("Translation will appear here."))
 
     def _resize_edges_at(self, position):

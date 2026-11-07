@@ -28,6 +28,15 @@ class OverlayInteractionTests(unittest.TestCase):
         self.app.processEvents()
         self.addCleanup(self.overlay.close)
 
+    def test_translation_remains_after_capture_mode_stops(self):
+        with patch("usta.ui.overlay_window.QTimer.start") as start_timer:
+            self.overlay.set_mode(True)
+            self.overlay.update_text("persistent translation")
+            self.overlay.set_mode(False)
+            start_timer.assert_not_called()
+
+        self.assertEqual(self.overlay.label.text(), "persistent translation")
+
     def mouse(self, kind, local, *, global_pos=None, buttons=Qt.NoButton):
         position = QPoint(*local)
         global_pos = global_pos or self.overlay.mapToGlobal(position)
